@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiz — História do Brasil</title>
+
+<style>
+  /* ===========================================================
+     1) VARIÁVEIS DE TEMA (light/dark)
+     Definir cores como "variáveis CSS" (custom properties) é uma
+     boa prática: você troca a paleta inteira mudando só aqui.
+  =========================================================== */
+  :root {
+    --bg: #f4ede4;
+    --bg-card: #ffffff;
+    --text: #2b2420;
+    --text-muted: #6b5f55;
+    --accent: #8a2f24;       /* vermelho terracota, tom "história antiga" */
+    --accent-2: #2f5233;     /* verde oliva */
+    --border: #d9cdbd;
+    --correct: #2f7a3d;
+    --wrong: #b3362a;
+    --shadow: rgba(43, 36, 32, 0.15);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1714;
+      --bg-card: #26201c;
+      --text: #f0e6da;
+      --text-muted: #b8aa9c;
+      --accent: #d98c72;
+      --accent-2: #8fbf9a;
+      --border: #3a322c;
+      --correct: #7fd897;
+      --wrong: #f28b7f;
+      --shadow: rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1714;
+    --bg-card: #26201c;
+    --text: #f0e6da;
+    --text-muted: #b8aa9c;
+    --accent: #d98c72;
+    --accent-2: #8fbf9a;
+    --border: #3a322c;
+    --correct: #7fd897;
+    --wrong: #f28b7f;
+    --shadow: rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Georgia", "Times New Roman", serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex;
+    justify-content: center;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 720px;
+    padding: 32px 0 48px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  header h1 {
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    margin: 0 0 4px;
+    letter-spacing: 0.5px;
+  }
+
+  header p {
+    color: var(--text-muted);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  /* Barra de progresso */
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    margin: 20px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.35s ease;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+
+  .q-count {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .q-text {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    margin: 0 0 20px;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .option {
+    text-align: left;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  }
+
+  .option:hover:not(:disabled) {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .option:disabled {
+    cursor: default;
+  }
+
+  .option.correct {
+    border-color: var(--correct);
+    background: color-mix(in srgb, var(--correct) 15%, transparent);
+    font-weight: bold;
+  }
+
+  .option.wrong {
+    border-color: var(--wrong);
+    background: color-mix(in srgb, var(--wrong) 15%, transparent);
+  }
+
+  .feedback {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+    border: 1px solid var(--border);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    display: none;
+  }
+
+  .feedback.show { display: block; }
+
+  .feedback .verdict {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .nav {
+    margin-top: 22px;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  button.next {
+    font-family: inherit;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  button.next.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  button.next:hover { filter: brightness(1.08); }
+
+  /* Tela final */
+  .result {
+    text-align: center;
+  }
+  .result .score {
+    font-size: 3rem;
+    color: var(--accent);
+    margin: 8px 0;
+  }
+  .result p { color: var(--text-muted); }
+
+  button.restart {
+    font-family: inherit;
+    margin-top: 18px;
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button.restart:hover { background: var(--accent); color: #fff; }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 28px;
+  }
+
+  @media (max-width: 480px) {
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Quiz — História do Brasil</h1>
+    <p>Do Brasil pré-colonial à redemocratização</p>
+  </header>
+
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <!-- Card único: seu conteúdo é trocado via JS a cada pergunta -->
+  <div class="card" id="quizCard"></div>
+
+  <footer>Feito para revisão de História do Brasil</footer>
+</div>
+
+<script>
+/* =============================================================
+   2) DADOS DO QUIZ
+   Cada pergunta é um objeto simples: { pergunta, opções, índice
+   da correta, explicação }. Manter os dados separados da lógica
+   de exibição é uma boa prática (facilita adicionar/editar
+   perguntas sem mexer no resto do código).
+============================================================= */
+const QUESTIONS = [
+  {
+    q: "O que caracterizou principalmente a economia do Brasil pré-colonial no Nordeste?",
+    options: ["A produção de café", "A economia açucareira e o trabalho escravo", "A extração de petróleo", "A pecuária extensiva"],
+    correct: 1,
+    explain: "O início da colonização portuguesa foi marcado pela economia do açúcar no Nordeste, sustentada pelo trabalho escravo."
+  },
+  {
+    q: "O que eram as Sesmarias?",
+    options: [
+      "Impostos cobrados pela Coroa portuguesa",
+      "Um sistema colonial de concessão de terras a quem se comprometesse a cultivá-las",
+      "Tribunais que julgavam crimes na colônia",
+      "Rotas comerciais entre Brasil e Portugal"
+    ],
+    correct: 1,
+    explain: "As Sesmarias concediam terras a quem se comprometesse a cultivá-las, promovendo a ocupação do território — mas também gerando grandes latifúndios."
+  },
+  {
+    q: "Quantas Capitanias Hereditárias foram criadas por Portugal?",
+    options: ["10", "12", "15", "20"],
+    correct: 2,
+    explain: "Portugal dividiu a costa do Brasil em 15 Capitanias Hereditárias, entregues a capitães donatários."
+  },
+  {
+    q: "O Tratado de Tordesilhas dividia o território brasileiro entre quais nações?",
+    options: ["França e Holanda", "Espanha e Portugal", "Inglaterra e Portugal", "Portugal e Holanda"],
+    correct: 1,
+    explain: "O Tratado de Tordesilhas dividia resumidamente o território em duas partes: uma da Espanha e outra de Portugal."
+  },
+  {
+    q: "O que eram os Engenhos, na época colonial?",
+    options: [
+      "Máquinas usadas na mineração",
+      "Centros de produção açucareira comandados pelos senhores de engenho",
+      "Fortalezas militares no litoral",
+      "Escolas religiosas jesuítas"
+    ],
+    correct: 1,
+    explain: "Os engenhos eram centros de produção açucareira comandados pelos senhores de engenho, que moravam na casa grande."
+  },
+  {
+    q: "O que foi a 'Política do Café com Leite'?",
+    options: [
+      "Um acordo comercial entre Brasil e Argentina",
+      "O revezamento de poder entre as oligarquias de São Paulo e Minas Gerais",
+      "Um programa de distribuição de alimentos",
+      "Uma reforma agrária da Primeira República"
+    ],
+    correct: 1,
+    explain: "Foi um acordo político da República Velha (1894–1930) em que oligarquias de SP e MG se revezavam na presidência do Brasil."
+  },
+  {
+    q: "O que caracterizava o Coronelismo?",
+    options: [
+      "Um sistema de eleições diretas e livres",
+      "O controle das eleições locais por grandes proprietários de terra",
+      "A criação de sindicatos rurais",
+      "O fim do trabalho escravo no campo"
+    ],
+    correct: 1,
+    explain: "O coronelismo era um sistema de poder político e econômico em que grandes proprietários de terra controlavam as eleições locais, com práticas como o voto de cabresto e o clientelismo."
+  },
+  {
+    q: "Qual evento encerrou a Primeira República (República Velha)?",
+    options: ["A Proclamação da República", "A Revolução de 1930", "A Guerra do Paraguai", "A Lei Áurea"],
+    correct: 1,
+    explain: "A Revolução de 1930 foi um golpe cívico-militar que depôs Washington Luís e encerrou a Primeira República, levando Getúlio Vargas ao poder."
+  },
+  {
+    q: "Qual crime político serviu de estopim para a Revolução de 1930?",
+    options: ["O assassinato de João Pessoa", "A Quebra da Bolsa de Nova York", "O fim do Café com Leite", "A morte de Washington Luís"],
+    correct: 0,
+    explain: "O assassinato de João Pessoa, em julho de 1930, funcionou como catalisador para o movimento armado, embora a ruptura da aliança Café com Leite e a Crise de 1929 também tenham sido causas centrais."
+  },
+  {
+    q: "O que foi o Estado Novo (1937–1945)?",
+    options: [
+      "Um período de eleições diretas",
+      "Uma fase de ditadura de Getúlio Vargas, com censura e repressão",
+      "O nome dado à Constituição de 1934",
+      "Uma aliança entre Brasil e Estados Unidos"
+    ],
+    correct: 1,
+    explain: "O Estado Novo foi uma ditadura marcada pela centralização extrema do poder, forte censura e repressão aos opositores, dentro da chamada Era Vargas."
+  },
+  {
+    q: "Em que ano foi consolidada a CLT (Consolidação das Leis do Trabalho)?",
+    options: ["1930", "1937", "1943", "1945"],
+    correct: 2,
+    explain: "A CLT foi consolidada em 1943, reunindo direitos trabalhistas como a jornada de oito horas."
+  },
+  {
+    q: "Qual foi o principal conflito ideológico da Guerra Fria?",
+    options: [
+      "Brasil x Argentina",
+      "EUA (capitalismo) x União Soviética (socialismo)",
+      "França x Alemanha",
+      "Portugal x Espanha"
+    ],
+    correct: 1,
+    explain: "A Guerra Fria foi um conflito ideológico, político e militar indireto entre os EUA (capitalismo) e a URSS (socialismo)."
+  },
+  {
+    q: "O que motivou, entre outros fatores, o golpe civil-militar de 1964 no Brasil?",
+    options: [
+      "O temor de que João Goulart aproximasse o país do socialismo",
+      "Uma invasão estrangeira ao território brasileiro",
+      "O fim da Era Vargas",
+      "A criação da Petrobras"
+    ],
+    correct: 0,
+    explain: "As reformas sociais propostas por João Goulart (Jango) e sua aproximação com países socialistas geraram forte reação anticomunista, com apoio dos EUA aos golpistas."
+  },
+  {
+    q: "O que foi o AI-5, editado em 1968?",
+    options: [
+      "Uma lei que ampliou a liberdade de imprensa",
+      "Um Ato Institucional que endureceu a repressão durante a Ditadura Militar",
+      "O tratado que encerrou a ditadura",
+      "A lei que criou o voto feminino"
+    ],
+    correct: 1,
+    explain: "O AI-5 foi um dos Atos Institucionais usados pelo governo militar para concentrar poder e anular a oposição, marcando o endurecimento da repressão."
+  },
+  {
+    q: "Como e quando terminou a Ditadura Militar no Brasil?",
+    options: [
+      "Em 1985, com a transição para um governo civil após a Lei da Anistia e as Diretas Já",
+      "Em 1968, com o AI-5",
+      "Em 1930, com a Revolução",
+      "Em 1994, com o Plano Real"
+    ],
+    correct: 0,
+    explain: "A abertura política, a Lei da Anistia (1979) e a mobilização das Diretas Já abriram caminho para a eleição de Tancredo Neves em 1985, encerrando o ciclo militar."
+  },
+  {
+    q: "Tancredo Neves foi eleito pelo Colégio Eleitoral, mas quem assumiu de fato a presidência?",
+    options: ["Ulysses Guimarães", "José Sarney", "Fernando Collor", "Itamar Franco"],
+    correct: 1,
+    explain: "Tancredo Neves ficou doente e faleceu antes da posse; seu vice, José Sarney, assumiu a presidência."
+  },
+  {
+    q: "O que a Constituição de 1988 NÃO garantiu?",
+    options: [
+      "O retorno de direitos civis e políticos",
+      "A criação do SUS (Sistema Único de Saúde)",
+      "A manutenção da censura à imprensa",
+      "Eleições diretas em dois turnos"
+    ],
+    correct: 2,
+    explain: "A Constituição de 1988, conhecida como 'Constituição Cidadã', pôs fim à censura — ao contrário do que a alternativa sugere — além de criar o SUS e garantir direitos civis."
+  },
+  {
+    q: "O que trouxe estabilidade econômica ao Brasil em 1994?",
+    options: ["O Plano Cruzado", "O Plano Real", "A criação da Petrobras", "A Lei Áurea"],
+    correct: 1,
+    explain: "O Plano Real, implementado em 1994 no governo de Itamar Franco/FHC, trouxe estabilidade com a nova moeda."
+  },
+  {
+    q: "Qual presidente sofreu impeachment em 1992?",
+    options: ["José Sarney", "Itamar Franco", "Fernando Collor", "Juscelino Kubitschek"],
+    correct: 2,
+    explain: "Fernando Collor sofreu impeachment em 1992, após grandes pressões sociais e denúncias de corrupção."
+  }
+];
+
+/* =============================================================
+   3) ESTADO DA APLICAÇÃO
+   Guardamos tudo que muda durante o quiz em variáveis simples.
+============================================================= */
+let currentIndex = 0;
+let score = 0;
+let answered = false; // impede clicar em duas opções na mesma pergunta
+
+const quizCard = document.getElementById("quizCard");
+const progressFill = document.getElementById("progressFill");
+
+/* =============================================================
+   4) RENDERIZAÇÃO
+   Uma função por "tela": renderQuestion() e renderResult().
+   Isso deixa claro o que cada uma faz e facilita manutenção.
+============================================================= */
+function renderQuestion() {
+  answered = false;
+  const item = QUESTIONS[currentIndex];
+
+  // Atualiza a barra de progresso
+  const pct = (currentIndex / QUESTIONS.length) * 100;
+  progressFill.style.width = pct + "%";
+
+  // Monta o HTML da pergunta atual
+  quizCard.innerHTML = `
+    <div class="q-count">Pergunta ${currentIndex + 1} de ${QUESTIONS.length}</div>
+    <p class="q-text">${item.q}</p>
+    <div class="options" id="optionsWrap"></div>
+    <div class="feedback" id="feedbackBox"></div>
+    <div class="nav">
+      <button class="next" id="nextBtn">
+        ${currentIndex === QUESTIONS.length - 1 ? "Ver resultado" : "Próxima"}
+      </button>
+    </div>
+  `;
+
+  const optionsWrap = document.getElementById("optionsWrap");
+  item.options.forEach((optText, i) => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.textContent = optText;
+    btn.addEventListener("click", () => selectOption(i, btn));
+    optionsWrap.appendChild(btn);
+  });
+}
+
+function selectOption(selectedIndex, btnEl) {
+  if (answered) return; // já respondeu esta pergunta, ignora novos cliques
+  answered = true;
+
+  const item = QUESTIONS[currentIndex];
+  const isCorrect = selectedIndex === item.correct;
+  if (isCorrect) score++;
+
+  // Desabilita todas as opções e marca visualmente certo/errado
+  const allOptions = document.querySelectorAll("#optionsWrap .option");
+  allOptions.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === item.correct) btn.classList.add("correct");
+    else if (i === selectedIndex) btn.classList.add("wrong");
+  });
+
+  // Mostra a explicação
+  const feedbackBox = document.getElementById("feedbackBox");
+  feedbackBox.classList.add("show");
+  feedbackBox.innerHTML = `
+    <span class="verdict">${isCorrect ? "Certo!" : "Não foi dessa vez."}</span>
+    ${item.explain}
+  `;
+
+  // Libera o botão de avançar
+  document.getElementById("nextBtn").classList.add("show");
+}
+
+function renderResult() {
+  progressFill.style.width = "100%";
+  const total = QUESTIONS.length;
+  const pct = Math.round((score / total) * 100);
+
+  let msg;
+  if (pct === 100) msg = "Nota máxima! Você domina a linha do tempo.";
+  else if (pct >= 70) msg = "Muito bom! Revise só os pontos que errou.";
+  else if (pct >= 40) msg = "Bom começo — vale revisar o material com calma.";
+  else msg = "Bora revisar o conteúdo e tentar de novo.";
+
+  quizCard.innerHTML = `
+    <div class="result">
+      <p>Você acertou</p>
+      <div class="score">${score} / ${total}</div>
+      <p>${msg}</p>
+      <button class="restart" id="restartBtn">Refazer o quiz</button>
+    </div>
+  `;
+
+  document.getElementById("restartBtn").addEventListener("click", () => {
+    currentIndex = 0;
+    score = 0;
+    renderQuestion();
+  });
+}
+
+/* =============================================================
+   5) NAVEGAÇÃO ENTRE PERGUNTAS
+   Usamos delegação de evento no card, já que o botão "Próxima"
+   é recriado a cada pergunta (não existe ainda quando a página
+   carrega).
+============================================================= */
+quizCard.addEventListener("click", (e) => {
+  if (e.target && e.target.id === "nextBtn") {
+    currentIndex++;
+    if (currentIndex < QUESTIONS.length) {
+      renderQuestion();
+    } else {
+      renderResult();
+    }
+  }
+});
+
+// Inicia o quiz
+renderQuestion();
+</script>
+</body>
+</html>
